@@ -471,7 +471,7 @@ degreeMax = maxDegree(G)
 print("母图的最大度数", degreeMax)
 print("母图的最大权重", weightMax)
 # 图，查询节点，社区大小上界，社区大小下界
-H = ScEnum(G, 1, 7, 8)
+H = ScEnum(G, 1, 6, 6)
 print("最终社区的最小度为",minDegree(nx.subgraph(G,H)))
 print("最终社区的最小权重为",minWeight(nx.subgraph(G,H)))
 paint(GList,H)
