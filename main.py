@@ -3,7 +3,8 @@ import heapq
 import matplotlib.pyplot as plt
 # import dataHandle as dh
 # import txthandle as th
-import fileHandle as fh
+import core.fileHandle as fh
+import time
 
 
 # 用于画图的函数
@@ -121,7 +122,7 @@ def ConnectScore(C, R):
                 # print("i在C中的度为", graphC.degree(i))
                 if graphC.degree(i) != 0:
                     # print(graphC.degree(i))
-                    score += 1 / graphC.degree(i);
+                    score += 1 / graphC.degree(i)
                 else:
                     score = 0
         # 如果v没有邻居，则直接分数为0
@@ -159,6 +160,8 @@ def reduce1(C, R, h, k1):
         lengthC = len(Cgraph.nodes)
         if min(CAndRGraph.degree(v), CAndvGraph.degree(v) + h - lengthC - 1) <= k1:
             # print("根据reduce1移除节点", v)
+            # if v in [1, 4, 6, 7, 13, 537, 425]:
+            #     print("shanchu",v)
             R.remove(v)
     # print("调用缩减规则1结束")
     return R
@@ -263,7 +266,7 @@ def degreeNeighborReconstruct(C, R, h):
         degreeDicu[u] = CGraph.degree(u)  # 将u在C中的度用字典保存
     # 对R'中的每个v,选取x个节点（x是v在{v}∪C中的度数）
     for v in RexDic:
-        # 选最小的几个节点
+        # 从选最小的几个节点令度+1
         CexDic = dict(heapq.nsmallest(degreeDicvInCAndv2[v], degreeDicu.items(), key=lambda x: x[1]))
         # print(v, ":度数加一的节点", CexDic)
         for key, values in CexDic.items():
@@ -348,10 +351,18 @@ def dominationNodes(C, R, vx):
 # SC-heu(G,q,l,h)替代贪婪F算法得到一个可行社区H
 def ScHeu(G, q, l, h):
     print("查询节点", q, "的度为：", G.degree(q))
-    H = []  # 初始为空
+    H = [q]  # 初始只包含q
     k1 = 0  # 下界
     S = []
-    if G.degree[q] >= (h - 1):
+    # 处理第二个节点
+    if len(H) == 1:  # 如果只有一个节点，选取相邻最大的度的节点
+        degree = 0
+        for i in nx.neighbors(G, H[0]):
+            if G.degree(i) > degree:
+                node = i
+        H.append(node)
+    print("第二个节点是", H)
+    if G.degree[q] >= (h - 1) and 2 == 1:
         S = Getego(G, q)  # 将q的自我网络节点集赋值给S
         S = list(S)
         Sgraph = nx.subgraph(G, S)
@@ -377,25 +388,27 @@ def ScHeu(G, q, l, h):
             Sgraph = nx.subgraph(G, S)  # 将S图更新以便下一次循环
 
     else:
-        S.append(q)
+        S = H[:]
         while len(S) < h:
             # 找出G\S中连接分数最大的节点V*
-            GexcludeS = list(set(G).difference(set(S)))  # 求G与S的差集
+            GexcludeS = list(set(G.nodes).difference(set(S)))  # 求G与S的差集
             soreDict = ConnectScore(S, GexcludeS)
-            # print(soreDict)
+            # test=sorted(soreDict.items(),key=lambda x:x[1],reverse=True)
+            # print(test)
             scoreMaxNode = max(soreDict, key=soreDict.get)
             S.append(scoreMaxNode)  # S=S∪{V*}
             sGraph = nx.subgraph(G, S)
             if len(S) >= l and MinDegree(sGraph) > k1:
                 k1 = MinDegree(sGraph)
-                H = S
+                H = S[:]
     if len(H) == 0:
         H.append(q)
-    print("基线算法结束,得到的可行社区为:", H)
+    print("基线算法结束,得到的可行社区为:", H, "凝聚分数为：", cohesiveScore(H)
+          , "最小权重", minWeight(nx.subgraph(G, H)))
     print("初始可行解的顶点数为：", len(H))
     print("初始可行解的最小度为：", MinDegree(nx.subgraph(G, H)))
-    nx.draw(nx.subgraph(G, H), with_labels=True)
-    plt.show()
+    # nx.draw(nx.subgraph(G, H), with_labels=True)
+    # plt.show()
     return H
 
 
@@ -420,7 +433,7 @@ def BRB(C, R, k1, l, h, H):
         H = C[:]
         # nx.draw(nx.subgraph(G,H),with_labels=True)
         # plt.show()
-        print("更新：H=", H, "最小度为:", k1)
+        print("更新：H=", H, "最小度为:", k1, "最小权重:", minWeight(nx.subgraph(G, H)))
     # print("k1",k1)
     if len(C) < h and len(R) != 0 and UB > k1:
         scoreDict = ConnectScore(C, R)
@@ -462,17 +475,37 @@ def ScEnum(G, q, l, h):
     return H
 
 
-GList = fh.csvResolve('dataset/bitcoinData.csv')  # 得到测试用图
+GList = fh.csvResolve('dataset/facebook.csv')  # 得到测试用图
+
 G = nx.Graph()
 G.add_weighted_edges_from(GList)
-G.remove_edges_from(nx.selfloop_edges(G))
+# G.remove_edges_from(nx.selfloop_edges(G))
 weightMax = maxWeight(G)
 degreeMax = maxDegree(G)
 print("母图的最大度数", degreeMax)
 print("母图的最大权重", weightMax)
+print("母图节点数", len(G.nodes))
+print("母图边数", len(G.edges))
 # 图，查询节点，社区大小上界，社区大小下界
-H = ScEnum(G, 1, 6, 6)
-print("最终社区的最小度为",minDegree(nx.subgraph(G,H)))
-print("最终社区的最小权重为",minWeight(nx.subgraph(G,H)))
-paint(GList,H)
+# bitcoin数据集，查询节点为1
+# wiki-vote数据集，查询节点7
+# H = ScEnum(G, 1, 10, 10)
+start_time = time.time()
+H = ScEnum(G, 483, 7, 7)
+end_time = time.time()
+print("搜索共用时：", end_time - start_time)
+# email-weight数据集，查询节点256
+# H = ScEnum(G, 256, 8, 8)
+# H = ScEnum(G, 247, 6, 6)
+# wiki-vote数据集，查询节点7
+# H = ScEnum(G, 7, 8, 8)
+# dblp数据集，查询节点247
+# dblp数据集，查询节点354
+# H = ScEnum(G, 247, 7, 7)
+# lastfm数据集，查询节点81
+# H = ScEnum(G, 54, 7, 7)
+print("最终社区的最小度为", minDegree(nx.subgraph(G, H)))
+print("最终社区的最小权重为", minWeight(nx.subgraph(G, H)))
 print("搜索结果：", H, "凝聚分数", cohesiveScore(H))
+
+paint(GList, H)
